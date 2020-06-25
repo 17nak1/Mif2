@@ -1,63 +1,72 @@
 
-var mathLib = require('./mathLib')
+/**
+ *  @file             rpois.js   
+ *                    Random number generator using the poisson distribution.    
+ *                         
+ *  @references       Jacob K.F. Bogers
+ *                    Copyright (C) 2018  Jacob K.F. Bogers  info@mail.jacob-bogers.com
+ *                    https://github.com/R-js/libRmath.js/blob/master/src/lib/poisson/rpois.ts
+ *
+ *  @autor            Nazila Akhavan, nazila@kingsds.network
+ *  @date             March 2019
+ */
+
+let mathLib = require('./mathLib')
 
 rpois = {}
 
-
+let M_1_SQRT_2PI = 1 / Math.sqrt(2 * Math.PI)
+let a0 = -0.5;
+let a1 = 0.3333333;
+let a2 = -0.2500068;
+let a3 = 0.2000118;
+let a4 = -0.1661269;
+let a5 = 0.1421878;
+let a6 = -0.1384794;
+let a7 = 0.125006;
+let one_7 = 0.1428571428571428571;
+let one_12 = 0.0833333333333333333;
+let one_24 = 0.0416666666666666667;
 
 rpois.rpoisOne = function (mu) {
-    var M_1_SQRT_2PI = 1 / Math.sqrt(2 * Math.PI)
-    var a0 = -0.5;
-    var a1 = 0.3333333;
-    var a2 = -0.2500068;
-    var a3 = 0.2000118;
-    var a4 = -0.1661269;
-    var a5 = 0.1421878;
-    var a6 = -0.1384794;
-    var a7 = 0.125006;
-    var one_7 = 0.1428571428571428571;
-    var one_12 = 0.0833333333333333333;
-    var one_24 = 0.0416666666666666667; 
-
-    var fact = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880];
-    var l = 0;
-    var m = 0;
-    var pp = new Array(36);
-    var b1 = 0;
-    var b2 = 0;
-    var c = 0;
-    var c0 = 0;
-    var c1 = 0;
-    var c2 = 0;
-    var c3 = 0;
-    var p0 = 0;
-    var p = 0;
-    var q = 0;
-    var s = 0;
-    var d = 0;
-    var omega = 0;
-    var big_l = 0;
-    var muprev = 0;
-    var muprev2 = 0;
-    var del;
-    var difmuk = 0;
-    var E = 0;
-    var fk = 0;
-    var fx;
-    var fy;
-    var g;
-    var px;
-    var py;
-    var t = 0;
-    var u = 0;
-    var v;
-    var x;
-    var pois = -1;
-    var k;
-    var kflag = 0;
-    var big_mu;
-    var new_big_mu = false;
-    var gotoStepF, once
+    let fact = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880];
+    let l = 0;
+    let m = 0;
+    let pp = new Array(36);
+    let b1 = 0;
+    let b2 = 0;
+    let c = 0;
+    let c0 = 0;
+    let c1 = 0;
+    let c2 = 0;
+    let c3 = 0;
+    let p0 = 0;
+    let p = 0;
+    let q = 0;
+    let s = 0;
+    let d = 0;
+    let omega = 0;
+    let big_l = 0;
+    let muprev = 0;
+    let muprev2 = 0;
+    let del;
+    let difmuk = 0;
+    let E = 0;
+    let fk = 0;
+    let fx;
+    let fy;
+    let g;
+    let px;
+    let py;
+    let t = 0;
+    let u = 0;
+    let v;
+    let x;
+    let pois = -1;
+    let k;
+    let kflag = 0;
+    let big_mu;
+    let new_big_mu = false;
     if (!isFinite(mu) || mu < 0) {
         throw "error"
     }
@@ -83,7 +92,7 @@ rpois.rpoisOne = function (mu) {
                 q = p0 = p = Math.exp(-mu);
             }
             while (true) {
-                u = Math.random();//rng.unif_rand()
+                u = Math.random();
                 if (u <= p0)
                     return 0;
                 if (l !== 0) {
@@ -107,14 +116,21 @@ rpois.rpoisOne = function (mu) {
             }
         }
     }
-    g = mu + s * Math.random() //mathLib.normalRand()//rng.norm_randOne();
+    function randNormal() {
+      var u = 0, v = 0;
+      while(u === 0) u = Math.random(); //Converting [0,1) to (0,1)
+      while(v === 0) v = Math.random();
+      return Math.sqrt( -2.0 * Math.log( u ) ) * Math.cos( 2.0 * Math.PI * v );
+    }
+    g =
+        mu + s * randNormal(); //mathLib.normalRand()//rng.norm_randOne();
     if (g >= 0) {
         pois = Math.floor(g);
         if (pois >= big_l)
             return pois;
         fk = pois;
         difmuk = mu - fk;
-        u = Math.random();//rng.unif_rand()
+        u = Math.random();
         if (d * u >= difmuk * difmuk * difmuk)
             return pois;
     }
@@ -129,8 +145,8 @@ rpois.rpoisOne = function (mu) {
         c0 = 1 - b1 + 3 * b2 - 15 * c3;
         c = 0.1069 / mu;
     }
-    gotoStepF = false;
-    once = true;
+    let gotoStepF = false;
+    let once = true;
     while (true) {
         if (once) {
             once = false;
@@ -141,7 +157,7 @@ rpois.rpoisOne = function (mu) {
         }
         if (!gotoStepF) {
             E = mathLib.expRand(Math.random)//sMath.exp_1.Math.exp_rand(rng.unif_rand);
-            u = 2 * Math.random() - 1;//rng.unif_rand()
+            u = 2 * Math.random() - 1;
             t = 1.8 + mathLib.sign(E, u >= 0);
         }
         if (t > -0.6744 || gotoStepF) {
@@ -192,4 +208,4 @@ rpois.rpoisOne = function (mu) {
 }
 
 module.exports = rpois;
-// console.log(rpois.rpoisOne(10))
+

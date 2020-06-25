@@ -90,8 +90,11 @@ var timeLen = dataCases.length
       k = tdata
     }
    if ( k === t0) {
+     console.log(params)
      var Nlog = mathLib.toLogBarycentric([params[7], params[8], params[9], params[10]],4)
+     console.log(Nlog)
      var N = mathLib.fromLogBarycentric(Nlog, 4)
+     console.log(N)
      var m = interpolPop(k) / (N[0] + N[1] + N[2] + N[3]);
      params[7] = Math.round(m * N[0]),
      params[8] = Math.round(m * N[1]),

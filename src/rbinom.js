@@ -1,56 +1,59 @@
-/*
- * file        rbinom.js     Random variates from the binomial distribution.
+/**
+ *  @file             rbinom.js   
+ *                    Random number generator using the binomial distribution.    
  *                         
- * References                Jacob K.F. Bogers  info@mail.jacob-bogers.com
- *                           https://github.com/R-js/libRmath.js/blob/master/src/lib/binomial/rbinom.ts
- *                           https://github.com/SurajGupta/r-source/blob/master/src/nmath/rbinom.c  
+ *  @references       Jacob K.F. Bogers
+ *                    Copyright (C) 2018  Jacob K.F. Bogers  info@mail.jacob-bogers.com
+ *                    https://github.com/R-js/libRmath.js/blob/master/src/lib/binomial/rbinom.ts
+ *
+ *  @date             March 2019
  */
 
 rbinom = {}
 
 rbinom. rbinomOne = function (size, pp) {
-    var c = 0;
-    var fm = 0;
-    var npq = 0;
-    var p1 = 0;
-    var p2 = 0;
-    var p3 = 0;
-    var p4 = 0;
-    var qn = 0;
-    var xl = 0;
-    var xll = 0;
-    var xlr = 0;
-    var xm = 0;
-    var xr = 0;
-    var psave = -1;
-    var nsave = -1;
-    var m = 0;
-    var f;
-    var f1;
-    var f2;
-    var u;
-    var v;
-    var w;
-    var w2;
-    var x;
-    var x1;
-    var x2;
-    var z;
-    var z2;
-    var p;
-    var q;
-    var np;
-    var g;
-    var r;
-    var al;
-    var alv;
-    var amaxp;
-    var ffm;
-    var ynorm;
-    var i;
-    var ix = 0;
-    var k;
-    var n;
+    let c = 0;
+    let fm = 0;
+    let npq = 0;
+    let p1 = 0;
+    let p2 = 0;
+    let p3 = 0;
+    let p4 = 0;
+    let qn = 0;
+    let xl = 0;
+    let xll = 0;
+    let xlr = 0;
+    let xm = 0;
+    let xr = 0;
+    let psave = -1
+    let nsave = -1;
+    let m = 0;
+    let f;
+    let f1;
+    let f2;
+    let u;
+    let v;
+    let w;
+    let w2;
+    let x;
+    let x1;
+    let x2;
+    let z;
+    let z2;
+    let p;
+    let q;
+    let np;
+    let g;
+    let r;
+    let al;
+    let alv;
+    let amaxp;
+    let ffm;
+    let ynorm;
+    let i;
+    let ix = 0;
+    let k;
+    let n;
     if (!isFinite(size)){
         throw "Input values should be finite"
     }
@@ -76,7 +79,7 @@ rbinom. rbinomOne = function (size, pp) {
     np = n * p;
     r = p / q;
     g = r * (n + 1);
-    var gotoL_np_small = false;
+    let gotoL_np_small = false;
     if (pp !== psave || n !== nsave) {
         psave = pp;
         nsave = n;
@@ -94,10 +97,10 @@ rbinom. rbinomOne = function (size, pp) {
             xr = xm + p1;
             c = 0.134 + 20.5 / (15.3 + fm);
             al = (ffm - xl) / (ffm - xl * p);
-            xll = al * (1 + 0.5 * al);
+            xll = al * (1.0 + 0.5 * al);
             al = (xr - ffm) / (xr * q);
-            xlr = al * (1 + 0.5 * al);
-            p2 = p1 * (1 + c + c);
+            xlr = al * (1.0 + 0.5 * al);
+            p2 = p1 * (1.0 + c + c);
             p3 = p2 + c / xll;
             p4 = p3 + c / xlr;
         }
@@ -105,7 +108,7 @@ rbinom. rbinomOne = function (size, pp) {
         if (np < 30.0)
             gotoL_np_small = true;
     }
-    var gotoFinis = false;
+    let gotoFinis = false;
     while (true && !gotoL_np_small) {
         u = Math.random() * p4; // rng.unif_rand()
         v = Math.random(); // rng.unif_rand
@@ -116,8 +119,8 @@ rbinom. rbinomOne = function (size, pp) {
         }
         if (u <= p2) {
             x = xl + (u - p1) / c;
-            v = v * c + 1 - Math.abs(xm - x) / p1;
-            if (v > 1 || v <= 0)
+            v = v * c + 1.0 - Math.abs(xm - x) / p1;
+            if (v > 1.0 || v <= 0)
                 continue;
             ix = Math.trunc(x);
         } else {
@@ -135,7 +138,7 @@ rbinom. rbinomOne = function (size, pp) {
         }
         k = Math.abs(ix - m);
         if (k <= 20 || k >= npq / 2 - 1) {
-            f = 1;
+            f = 1.0;
             if (m < ix) {
                 for (i = m + 1; i <= ix; i++)
                     f *= g / i - r;
@@ -157,9 +160,9 @@ rbinom. rbinomOne = function (size, pp) {
             }
             if (alv <= ynorm + amaxp) {
                 x1 = ix + 1;
-                f1 = fm + 1;
+                f1 = fm + 1.0;
                 z = n + 1 - fm;
-                w = n - ix + 1;
+                w = n - ix + 1.0;
                 z2 = z * z;
                 x2 = x1 * x1;
                 f2 = f1 * f1;
@@ -214,7 +217,7 @@ rbinom. rbinomOne = function (size, pp) {
 }
 
 rbinom.R_pow_di = function (x, n) {
-    var pow = 1;
+    let pow = 1.0;
     if (Number.isNaN(x))
         return x;
     if (n !== 0) {
