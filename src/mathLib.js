@@ -12,6 +12,7 @@ let mathLib = {}
 let erf = require('math-erf')
 let rbinom = require('./rbinom')
 let libUnif = require('lib-r-math.js');
+const { arrayrify } = require('lib-r-math.js/dist/src/lib/r-func');
 const {
     R: { numberPrecision },
     rng: { MersenneTwister, timeseed }
@@ -280,6 +281,23 @@ mathLib.index = function(paramnames, a) {
     }
   }
   return index;
+}
+
+mathLib.mean = function(x , w = 0) {
+  let nrow = x.length;
+  let ncol = x[0].length;
+  let mean = new Array(ncol).fill(0);
+  if (w === 0)
+    w = new Array(nrow).fill(1);
+  let sumw = w.reduce((a,b) => a+b, 0);
+  for (let i = 0; i < ncol; i ++) {
+    for (let j = 0; j < nrow; j++) {
+      mean[i] += x[j][i] * w[j]
+    }
+    console.log(mean[i])
+    mean[i] /= sumw; 
+  }  
+  console.log(mean)
 }
 
 module.exports = mathLib;

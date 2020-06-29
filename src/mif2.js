@@ -1,6 +1,8 @@
-const snippet = require("./modelSnippet");
+const mathLib = require("./mathLib.js");
+
 const { randwalk_perturbation } = require("./mif2cRW.js");
-const { rprocessInternal } = require("./rprocessInternal.js")
+const { rprocessInternal } = require("./rprocessInternal.js");
+const { dmeasureInternal } = require("./dmeasureInternal.js");
 
 const cooling = function(type, fraction, ntimes) {
   switch(type){
@@ -115,7 +117,7 @@ exports.mif2Internal = function (object)
   // Iterate the filtering main loop 
   let pfp;
   for (let n =0; n <= Nmif; n++) {
-    try {
+    // try {
       pfp = mif2Pfilter(
         object=pomp,
         params=paramMatrix,
@@ -130,9 +132,9 @@ exports.mif2Internal = function (object)
         transform,
         _indices=_indices,
       )
-    } catch (error) {
-      throw new Error(`Iterate the filtering stoped: ${error}`)
-    }
+    // } catch (error) {
+    //   throw new Error(`Iterate the filtering stoped: ${error}`)
+    // }
     // paramMatrix = pfp@paramMatrix
     // conv.rec[n+1,-c(1,2)] <- coef(pfp)
     // conv.rec[n,c(1,2)] <- c(pfp@loglik,pfp@nfail)
@@ -162,6 +164,7 @@ mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, param_rwI
   let effSampleSize = Number(ntimes);
   let nfail = 0;
   let alpha, pmag;
+  let x = [];
   for (let nt = 0; nt < 1; nt++) {
     alpha = coolingFn(nt + 1,mifiter).alpha;
     pmag =  rw_sd[nt].map(val => alpha * val);
@@ -170,30 +173,64 @@ mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, param_rwI
     if (transform)
       tparams = partrans(object, params, dir="fromEstimationScale");
     
-    if (nt == 0) {
+    if (nt === 0) {
       //get initial states
       params = transform ? tparams : params;
-      let x = [];
       for (let i = 0; i < params.length; i++) {
         x.push(object.initializer(object, params[i]))
       }
-      let X = [], xarray;
-      for (let i = 0; i < params.length; i++) {
-        params[i] = transform ? tparams[i] : params[i];
-        xarray = rprocessInternal(
-          object,
-          xstart=x[i],
-          times=[times[nt],times[nt+1]],
-          params[i],
-          offset=1
-        )
-        X.push(xarray)
-      }
-      
-      
-      // console.log(x)
     } 
-  }
+    
+    let X = [];
+    try {
+      X = rprocessInternal(
+        object,
+        xstart=x,
+        times = [times[nt],times[nt+1]],
+        params = transform ? tparams : params,
+        offset=1
+      );
+    } catch (error) {
+      console.error(`In mif2.js: process simulation error: ${error}`);
+    }
+    
+    let weights = [];
+    try {
+      weights = dmeasureInternal(
+        object,
+        y = object.data[nt],
+        x = X,
+        times = times[nt + 1],
+        params = transform ? tparams : params,
+        log = false
+      ); 
+    } catch (error) {
+      console.error(`In mif2.js: error in calculation of weights: ${error}`)
+    }
+    let allFinite = weights.map (w => isFinite(w)).reduce((a, b) => a & b, 1)
+    // if (!allFinite) {
+    //   first <- which(!is.finite(weights))[1L]
+    //   datvals <- object@data[,nt]
+    //   weight <- weights[first]
+    //   states <- X[,first,1L]
+    //   params <- if (transform) tparams[,first] else params[,first]
+    //   msg <- nonfinite_dmeasure_error(time=times[nt+1],lik=weight,datvals,states,params)
+    //   stop(ep,msg,call.=FALSE)
+    // }
+
+    // compute weighted mean at last timestep??????????????coef(object,transform=transform)
+    if (nt == ntimes) {
+      if (weights.map(w => w>0).reduce((a, b) => a || b, 0)) {
+        coef(object,transform=transform) = mathLib.mean(params, w = weights);
+      } else {
+        console.warn("filtering failure at last filter iteration, using unweighted mean for 'coef' ");
+        coef(object,transform=transform) = mathLib.mean(params);
+      }
+    }
+
+      
+  }    
+    
 
 }
 

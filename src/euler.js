@@ -1,43 +1,34 @@
-exports.euler_model_simulator (func, xstart, times, params, deltat,
-   method, zeronames, tcovar, covar, args, gnsi)
-{
+const mathLib = require("./mathLib");
+const { Z_BINARY } = require("zlib");
 
+
+exports.euler_model_simulator  = function(func, xstart, times, params, deltat,
+   method, object)
+{
+  let zeronames = object.zeronames;
+  let statenames = object.statenames; 
   if (deltat <= 0)
     throw new Error("In euler.js: 'delta.t' should be a positive number");
   let nvars = xstart[0].length;
   let nreps = xstart.length;
   let npars = params.length;
-  let covlen = covar[0].length;
-  let ncovars = covar.length;
   let ntimes = times.length;
-  let mode = "native";
 
-  cvec = Number(ncovars);
-  let nzeros = zeronames.length;
-  let zidx = []//matchname states and zeroname
-  // extract user function
-  // // construct state, parameter, covariate indices
-  // sidx = INTEGER(PROTECT(matchnames(Snames,GET_SLOT(func,install("statenames")),"state variables"))); nprotect++;
-  // pidx = INTEGER(PROTECT(matchnames(Pnames,GET_SLOT(func,install("paramnames")),"parameters"))); nprotect++;
-  // cidx = INTEGER(PROTECT(matchnames(Cnames,GET_SLOT(func,install("covarnames")),"covariates"))); nprotect++;
-  // ff = func;
+  let zidx = mathLib.index(statenames, zeronames);
 
-  let X = new Array(nrep).fill(Array(ntimes).fill(Array(nvars)));
-  X[0] = xstart;
   let t = times[0];
-  let xt = new Array(ntimes).fill(Array(nvars));
-  let first = 1;
-  let use_names = 0;
+  let xt = xstart;
 
   for (let step = 1; step < ntimes; step++) {
     if (t > times[step]) {
       throw new Error("In euler.js: 'times' is not an increasing sequence");
     }
-
+    
     // set accumulator variables to zero
     for (j = 0; j < nreps; j++) {
-      for (i = 0; i < nzeros; i++) {
-        xt[j][zidx[i]] = 0;
+      for (i = 0; i < nvars; i++) {
+        if(zidx[i] !== null)
+         xt[j][i] = 0;
       } 
     }
     switch (method) {
@@ -47,11 +38,11 @@ exports.euler_model_simulator (func, xstart, times, params, deltat,
         break;
       case 2:			// fixed step
         dt = deltat;
-        nstep = num_map_steps(t, times[step], dt);
+        nstep = numMapSteps(t, times[step], dt);
         break;
       case 3:			// Euler method
         dt = deltat;
-        nstep = num_euler_steps(t, times[step], dt);
+        nstep = numEulerSteps(t, times[step], dt);
         break;
       default:
         throw new Error("In euler.js: unrecognized 'method'"); // # nocov
@@ -60,7 +51,7 @@ exports.euler_model_simulator (func, xstart, times, params, deltat,
     for (let k = 0; k < nstep; k++) { // loop over Euler steps
       //interpolate
       for (let j = 0 ; j < nreps; j++) { // loop over replicates
-         xt[j] = ff(xt[j], pm[j], t, dt);
+         xt[j] = func(object, xt[j], params[j], t, dt);
       }
       t += dt;
 
@@ -69,9 +60,9 @@ exports.euler_model_simulator (func, xstart, times, params, deltat,
         t = times[step] - dt;
       }  
     }
-    X[step] = xt;
   }
-  return X;
+  
+  return xt;
 }
 
 // helpers
@@ -84,7 +75,7 @@ const numMapSteps = function (t1, t2, dt) {
   return (nstep > 0) ? nstep : 0
 }
 
-const num_euler_steps = function (t1, t2, dt) {
+const numEulerSteps = function (t1, t2, dt) {
   let DOUBLE_EPS = 10e-8
   let tol = Math.sqrt(DOUBLE_EPS)
   let nstep;

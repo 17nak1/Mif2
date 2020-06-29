@@ -7,21 +7,63 @@
  */
 
 snippet = {}
-let mathLib = require('./mathLib')
-let rpois = require('./rpois')
+let mathLib = require('./mathLib');
+let rpois = require('./rpois');
 
-snippet.rprocess = function (pomp, params, t, del_t, [S,E,I,R,H]) {
-  let pop =pomp.population(t);
-  let birthrate = pomp.birthrate(t)
-  let seas, beta, beta0, foi, R0, tt, va
-  let trans = new Array(6).fill(0)
-  let rate = new Array(6) 
-  let deltaT = 14 / 365.25
-  let dt = 1 / 365.25 
+// Order of index in parameters
+let pIndex = {
+  "R0": 0,
+  "amplitude": 1,
+  "gamma": 2,
+  "mu": 3,
+  "sigma": 4,
+  "rho": 5,
+  "psi": 6,
+  "S": 7,
+  "E": 8,
+  "I": 9,
+  "R":10,
+  "H": 11
+};
+
+// Order of index in states
+let SIndex = {
+  "S_0": 0,
+  "E_0": 1,
+  "I_0": 2,
+  "R_0":3,
+  "H": 4
+}
+
+let dataIndex = {
+  "cases": 0
+}
+
+
+snippet.rprocess = function (pomp, states, params, t, deltaT) {
   
-  R0 = params[0], amplitude = params[1], gamma = params[2], mu = params[3], sigma = params[4] 
-  beta0 = R0 * (gamma + mu) * (sigma + mu) / sigma
+  let S = states[SIndex['S_0']];
+  let E = states[SIndex['E_0']];
+  let I = states[SIndex['I_0']];
+  let R = states[SIndex['R_0']];
+  let H = states[SIndex['H']];
+
+  let R0 = params[pIndex['R0']];
+  let amplitude = params[pIndex['amplitude']];
+  let gamma = params[pIndex['gamma']];
+  let mu = params[pIndex['mu']];
+  let sigma = params[pIndex['sigma']] ;
+
+  let pop = pomp.population(t);
+  let birthrate = pomp.birthrate(t);
+  let seas, beta, beta0, foi, tt, va;
+  let length = pomp.statenames.length - pomp.zeronames.length - 1;
+  let trans = new Array(length * 2).fill(0);
+  let rate = new Array(length * 2); 
+
   
+  
+  beta0 = R0 * (gamma + mu) * (sigma + mu) / sigma;
   va = 0;
   tt = (t - Math.floor(t)) * 365.25
   if ((tt >= 7 && tt <= 100) || (tt >= 115 && tt <= 199) || (tt >= 252 && tt <= 300) || (tt >= 308 && tt <= 356)) {
@@ -38,10 +80,10 @@ snippet.rprocess = function (pomp, params, t, del_t, [S,E,I,R,H]) {
   rate[4] = gamma          // recovery
   rate[5] = mu             // natural I death 
    
-  let births = rpois.rpoisOne(birthrate * (1 - va) * del_t )// Poisson births
-  mathLib.reulermultinom(2, Math.round(S), 0, del_t, 0, rate, trans)
-  mathLib.reulermultinom(2, Math.round(E), 2, del_t, 2, rate, trans)
-  mathLib.reulermultinom(2, Math.round(I), 4, del_t, 4, rate, trans)
+  let births = rpois.rpoisOne(birthrate * (1 - va) * deltaT )// Poisson births
+  mathLib.reulermultinom(2, Math.round(S), 0, deltaT, 0, rate, trans)
+  mathLib.reulermultinom(2, Math.round(E), 2, deltaT, 2, rate, trans)
+  mathLib.reulermultinom(2, Math.round(I), 4, deltaT, 4, rate, trans)
   S += (births - trans[0] - trans[1])
   E += (trans[0] - trans[2] - trans[3]) 
   I += (trans[2] - trans[4] - trans[5]) 
@@ -51,29 +93,34 @@ snippet.rprocess = function (pomp, params, t, del_t, [S,E,I,R,H]) {
 }
 
 snippet.initz = function(pomp, params) {
-  let ind = pomp.pIndex;
-  let m = pomp.population(pomp.t0) / (params[ind["S"]] + params[ind["E"]] + params[ind["R"]] + params[ind["I"]]);
-  let S_0 = Math.round(m * params[ind["S"]]);
-  let E_0 = Math.round(m * params[ind["E"]]);
-  let I_0 = Math.round(m * params[ind["I"]]);
-  let R_0 = Math.round(m * params[ind["R"]]);
+  let m = pomp.population(pomp.t0) / (params[pIndex["S"]] + params[pIndex["E"]] + params[pIndex["R"]] + params[pIndex["I"]]);
+  let S_0 = Math.round(m * params[pIndex["S"]]);
+  let E_0 = Math.round(m * params[pIndex["E"]]);
+  let I_0 = Math.round(m * params[pIndex["I"]]);
+  let R_0 = Math.round(m * params[pIndex["R"]]);
   let H_0 = 0;
   return [S_0, E_0, I_0, R_0, H_0];
 }
 
-snippet.dmeasure = function (rho, psi, H, dCases, giveLog = 1) {
+snippet.dmeasure = function (pomp, data , hidden_state, params, giveLog = 1) {
   let lik
-  let mn = rho * H
-  let v = mn * (1.0 - rho + psi * psi * mn)
+  let rho = params['rho'];
+  let psi = params['psi'];
+  let H = hidden_state['H'];
+  let cases = data[dataIndex['cases']]
+
   let tol = 1.0e-18
-  let modelCases = Number(dCases)
+  let mn = rho * H;
+  let v = mn * (1.0 - rho + psi * psi * mn);
+  
+  let modelCases = Number(cases);
   if(!isNaN(modelCases)){
     if (modelCases > 0.0) {
       lik = mathLib.pnorm(modelCases + 0.5, mn, Math.sqrt(v) + tol, 1, 0) - mathLib.pnorm(modelCases - 0.5, mn, Math.sqrt(v) + tol, 1, 0) + tol
     } else {
-      lik = mathLib.pnorm((modelCases + 0.5, mn, Math.sqrt(v) + tol)) + tol
+      lik = mathLib.pnorm((modelCases + 0.5, mn, Math.sqrt(v) + tol)) + tol;
     }
-    if (giveLog) lik = Math.log(lik)
+    if (giveLog) lik = Math.log(lik);
   } else {
     lik = (giveLog) ? 0 : 1;
   }

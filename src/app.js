@@ -37,7 +37,7 @@ for (let i = 1; i < lines.length ; i++) {
   if(temp.length > 1) {
     temp = temp.map(function (x) {return Number(x)});
     dataCasesTimes.push(temp[0]);
-    dataCases.push(temp[1]);
+    dataCases.push(temp.slice(1));
   }
 }
 //* 3nd data set
@@ -95,7 +95,7 @@ const pomp = {
   data :  dataCases,
   times:  dataCasesTimes,
   t0: 1940,
-  rprocess :  { type:"euler_sim", stepFunction: snippet.rproc, deltaT: 1/365.25 },
+  rprocess :  { type:"euler_sim", stepFunction: snippet.rprocess, deltaT: 1/365.25 },
   rmeasure: snippet.rmeas,
   covar: dataCovar,
   tcovar: dataCovarTimes,
@@ -111,27 +111,14 @@ const pomp = {
 }
 let d1 = [], d2 = [];
 for (let i = 0; i < pomp.covar.length; i++) {
-  d1.push([Number(pomp.covar[i][0]), Number(pomp.covar[i][1])])
-  d2.push([Number(pomp.covar[i][0]), Number(pomp.covar[i][2])])
+  d1.push([Number(pomp.tcovar[i]), Number(pomp.covar[i][0])])
+  d2.push([Number(pomp.tcovar[i]), Number(pomp.covar[i][1])])
 }
 
 pomp.population = mathLib.interpolator(d1);
-pomp.birth = mathLib.interpolator(d2);
-pomp.pIndex = {
-  "R0": 0,
-  "amplitude": 1,
-  "gamma": 2,
-  "mu": 3,
-  "sigma": 4,
-  "rho": 5,
-  "psi": 6,
-  "S": 7,
-  "E": 8,
-  "I": 9,
-  "R":10,
-  "H": 11
-};
+pomp.birthrate = mathLib.interpolator(d2);
 
+global.pomp = pomp;
 mif2.mif2Internal(
   {pomp: pomp,
   Nmif: 1,
