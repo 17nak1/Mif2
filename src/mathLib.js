@@ -293,12 +293,11 @@ mathLib.mean = function(x , w = 0) {
   let sumw = w.reduce((a,b) => a+b, 0);
   for (let i = 0; i < ncol; i ++) {
     for (let j = 0; j < nrow; j++) {
-      mean[i] += x[j][i] * w[j]
+      mean[i] += x[j][i] * w[j];
     }
-    console.log(mean[i])
     mean[i] /= sumw; 
   }  
-  console.log(mean)
+  return mean;
 }
 
 module.exports = mathLib;

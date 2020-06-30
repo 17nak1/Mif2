@@ -80,11 +80,10 @@ exports.mif2Internal = function (object)
         param_rwIndex,
         tol=tol,
         maxFail,
-        verbose=verbose,
         transform,
         _indices=_indices,
       )
-      console.log(pfp)
+      
     // } catch (error) {
     //   throw new Error(`Iterate the filtering stoped: ${error}`)
     // }
@@ -93,14 +92,25 @@ exports.mif2Internal = function (object)
     // convRec[n,c(1,2)] = [pfp.loglik, pfp.nfail];
     _indices = pfp.indices;
   }
-  let aa
+  
   if (transform)
-    aa = partrans(pomp,paramMatrix,dir="fromEstimationScale");
-  console.log(aa)
+    pfp.paramMatrix = partrans(pomp,paramMatrix,dir="fromEstimationScale");
+  // console.log(pfp)
+  
+  return{
+    // "mif2d.pomp",
+    pfp,
+    Nmif: Nmif,
+    rw_sd: rw_sd,
+    coolingType: coolingType,
+    coolingFraction: coolingFraction,
+    transform: transform,
+    convRec: convRec
+  }
 }
 
 mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, param_rwIndex,
-  tol = 1e-17, maxFail = Inf, verbose, transform, _indices = 0)
+  tol = 1e-17, maxFail = Inf, transform, _indices = 0)
 {
   if ((Array.isArray(tol) && tol.length !== 1) || tol === Infinity || tol < 0)
     throw new Error(`${tol} should be a small positive number in mif2Pfilter.`);
@@ -165,14 +175,15 @@ mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, param_rwI
     if (!allFinite) {
       throw new Error("In dmeasure: weights returns non-finite value")
     }
-//TODO: last time check for coef()
-    // compute weighted mean at last timestep??????????????coef(object,transform=transform)
-    if (nt === ntimes) {
+
+    // compute weighted mean at last timestep
+    if (nt === ntimes - 1) {
       if (weights.map(w => w>0).reduce((a, b) => a || b, 0)) {
-        coef(object,transform=transform) = mathLib.mean(params, w = weights);
+        object.coef = partrans(object, mathLib.mean(params, w = weights), dir="fromEstimationScale");
+        
       } else {
         console.warn("filtering failure at last filter iteration, using unweighted mean for 'coef' ");
-        coef(object,transform=transform) = mathLib.mean(params);
+        object.coef = partrans(object, mathLib.mean(params), dir="fromEstimationScale");
       }
     }
 
