@@ -95,7 +95,7 @@ exports.mif2Internal = function (object)
   
   if (transform)
     pfp.paramMatrix = partrans(pomp,paramMatrix,dir="fromEstimationScale");
-  // console.log(pfp)
+  console.log(pfp)
   
   return{
     // "mif2d.pomp",

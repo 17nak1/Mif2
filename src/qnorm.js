@@ -59,7 +59,7 @@ exports.qnorm5 = function (p, mu, sigma, lower_tail, log_p) {
   if(sigma  < 0)	return NaN;
   if(sigma == 0)	return mu;
   
-  let p_ = R_DT_qIv(p);
+  let p_ = R_DT_qIv(p, lower_tail, log_p);
   let q = p_ - 0.5;
   let r;
 
@@ -89,12 +89,12 @@ exports.qnorm5 = function (p, mu, sigma, lower_tail, log_p) {
 
     /* r = min(p, 1-p) < 0.075 */
     if (q > 0)
-        r = R_DT_CIv(p);/* 1-p */
+        r = R_DT_CIv(p, lower_tail, log_p);/* 1-p */
     else
         r = p_;/* = R_DT_Iv(p) ^=  p */
 
     r = Math.sqrt(- ((log_p &&
-          ((lower_tail && q <= 0) || (!lower_tail && q > 0))) ? p :  log(r)));
+          ((lower_tail && q <= 0) || (!lower_tail && q > 0))) ? p :  Math.log(r)));
 
     if (r <= 5.) { /* <==> min(p,1-p) >= exp(-25) ~= 1.3888e-11 */
       r += -1.6;
@@ -153,19 +153,19 @@ const R_Q_P01_boundaries = function(p, _LEFT_, _RIGHT_, lower_tail, log_p )	{
   }
 }
 
-const R_D_Lval = function(p) {
+const R_D_Lval = function(p, lower_tail) {
   return lower_tail ? p : (0.5 - p + 0.5);
 }
 
-const R_D_Cval = function(p) {
+const R_D_Cval = function(p, lower_tail) {
   return	(lower_tail ? (0.5 - (p) + 0.5) : (p));
 }
 
-const R_DT_CIv = function(p) {
-  return (log_p ? (lower_tail ? -Math.expm1(p) : Math.exp(p)) : R_D_Cval(p))
+const R_DT_CIv = function(p, lower_tail, log_p) {
+  return (log_p ? (lower_tail ? -Math.expm1(p) : Math.exp(p)) : R_D_Cval(p, lower_tail))
 }
 
-const R_DT_qIv = function(p) {
-  return	(log_p ? (lower_tail ? Math.exp(p) : - Math.expm1(p)) : R_D_Lval(p));
+const R_DT_qIv = function(p, lower_tail, log_p) {
+  return	(log_p ? (lower_tail ? Math.exp(p) : - Math.expm1(p)) : R_D_Lval(p, lower_tail));
 }
 
