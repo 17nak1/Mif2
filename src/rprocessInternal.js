@@ -18,49 +18,13 @@ const do_rprocess = function (object, xstart, times, params, offset, args) {
   let npars = params[0].length;
   let nreps = params.length;
 
-  // if (nrepsx > nreps) {		// more ICs than parameters
-  //   if (nrepsx % nreps !== 0) {
-  //     throw new Error("in 'rprocess': the larger number of replicates is not a multiple of smaller.");
-  //   } else {
-  //     double *src, *tgt;
-  //     let dims = new Array(3);
-  //     int j, k;
-  //     dims[0] = npars;
-  //     dims[1] = nrepsx;
-  //     PROTECT(copy = duplicate(params)); nprotect++;
-  //     PROTECT(params = makearray(2,dims)); nprotect++;
-  //     setrownames(params,GET_ROWNAMES(GET_DIMNAMES(copy)),2);
-  //     src = REAL(copy);
-  //     tgt = REAL(params);
-  //     for (j = 0; j < nrepsx; j++) {
-  //       for (k = 0; k < npars; k++, tgt++) {
-  //         *tgt = src[k+npars*(j%nreps)];
-  //       }
-  //     }
-  //   }
-  //   nreps = nrepsx;
-  // } else if (nrepsx < nreps) {	// more parameters than ICs
-  //   if (nreps % nrepsx != 0) {
-  //     errorcall(R_NilValue,"in 'rprocess': the larger number of replicates is not a multiple of smaller.");
-  //   } else {
-  //     double *src, *tgt;
-  //     int dims[2];
-  //     int j, k;
-  //     dims[0] = nvars; dims[1] = nreps;
-  //     PROTECT(copy = duplicate(xstart)); nprotect++;
-  //     PROTECT(xstart = makearray(2,dims)); nprotect++;
-  //     setrownames(xstart,GET_ROWNAMES(GET_DIMNAMES(copy)),2);
-  //     src = REAL(copy);
-  //     tgt = REAL(xstart);
-  //     for (j = 0; j < nreps; j++) {
-  //       for (k = 0; k < nvars; k++, tgt++) {
-  //         *tgt = src[k+nvars*(j%nrepsx)];
-  //       }
-  //     }
-  //   }
-  // }
+  if (nrepsx > nreps) {		// more ICs than parameters
+    throw new Error("Less parameters than ICs is not translated!")
+  } else if (nrepsx < nreps) {	// more parameters than ICs
+    throw new Error("More parameters than ICs is not translated!")
+  }
   // extract the process function. NOTE: only discrete-time translated
-  let type = object.rprocess.type === "euler_sim" ? 2: 0;
+  let type = object.rprocess.type === "euler_sim" ? 3: 0;//TODO: type = *(INTEGER(GET_SLOT(rproc,install("type"))));
   let X;
   
   switch (type) {

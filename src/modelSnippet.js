@@ -27,7 +27,7 @@ let pIndex = {
 };
 
 // Order of index in states
-let SIndex = {
+let sIndex = {
   "S_0": 0,
   "E_0": 1,
   "I_0": 2,
@@ -42,11 +42,11 @@ let dataIndex = {
 
 snippet.rprocess = function (pomp, states, params, t, deltaT) {
   
-  let S = states[SIndex['S_0']];
-  let E = states[SIndex['E_0']];
-  let I = states[SIndex['I_0']];
-  let R = states[SIndex['R_0']];
-  let H = states[SIndex['H']];
+  let S = states[sIndex['S_0']];
+  let E = states[sIndex['E_0']];
+  let I = states[sIndex['I_0']];
+  let R = states[sIndex['R_0']];
+  let H = states[sIndex['H']];
 
   let R0 = params[pIndex['R0']];
   let amplitude = params[pIndex['amplitude']];
@@ -103,10 +103,11 @@ snippet.initz = function(pomp, params) {
 }
 
 snippet.dmeasure = function (pomp, data , hidden_state, params, giveLog = 1) {
+  
   let lik
-  let rho = params['rho'];
-  let psi = params['psi'];
-  let H = hidden_state['H'];
+  let rho = params[pIndex['rho']];
+  let psi = params[pIndex['psi']];
+  let H = hidden_state[sIndex['H']];
   let cases = data[dataIndex['cases']]
 
   let tol = 1.0e-18

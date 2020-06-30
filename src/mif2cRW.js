@@ -13,7 +13,7 @@ exports.randwalk_perturbation = function (params, rw_sd, pidx) {
   for (let i = 0; i < nreps; i++) {
     for (let j = 0; j < pidx.length; j++) {
       if(pidx[j] !== null) {
-        params[i][j] += rw_sd[pidx[j]] * mathLib.normalRand();
+        params[i][j] += rw_sd[pidx[j]] * mathLib.normalRand();//TODO
       }
     }
   }

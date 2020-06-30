@@ -1,9 +1,9 @@
 exports.dmeasureInternal  = function (object, y, x, times, params, log) {
-  let rv = do_rprocess(object, y, x, times, params, log);
+  let rv = do_dmeasure(object, y, x, times, params, log);
   return rv;
 }
 
-const do_rprocess = function (object, y, x, times, params, give_log) {
+const do_dmeasure = function (object, y, x, times, params, give_log) {
   
   ntimes = Array.isArray(times) ? length(times) : 1;
   if (!times || ntimes < 1)

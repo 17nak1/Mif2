@@ -30,7 +30,7 @@ for (let i = 1; i < lines.length; i++) {
 }
 
 //* 2nd data set
-file = fs.readFileSync(rootDir+'/samples/London_BiDataMain.csv').toString()
+file = fs.readFileSync(rootDir+'/samples/London_BiDataMainSh.csv').toString()
 lines = file.split('\n');
 for (let i = 1; i < lines.length ; i++) {
   temp = lines[i].split(',');
@@ -118,7 +118,6 @@ for (let i = 0; i < pomp.covar.length; i++) {
 pomp.population = mathLib.interpolator(d1);
 pomp.birthrate = mathLib.interpolator(d2);
 
-global.pomp = pomp;
 mif2.mif2Internal(
   {pomp: pomp,
   Nmif: 1,
