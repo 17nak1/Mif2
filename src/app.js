@@ -117,8 +117,8 @@ for (let i = 0; i < pomp.covar.length; i++) {
 
 pomp.population = mathLib.interpolator(d1);
 pomp.birthrate = mathLib.interpolator(d2);
-
-mif2.mif2Internal(
+let t = new Date()
+let mf = mif2.mif2Internal(
   {pomp: pomp,
   Nmif: 1,
   start: current_params,
@@ -127,11 +127,13 @@ mif2.mif2Internal(
   pars: params_mod_fit,
   rw_sd: rw_sd_f,
   param_rwIndex: param_rwIndex,
-  Np: 2,
+  Np: 50000,
   varFactor: 2,
   coolingType: "hyperbolic",
   coolingFraction: cool_fraction
   }
 )
+
+console.log(new Date() - t, mf.loglik, mf.coef)
 
 
