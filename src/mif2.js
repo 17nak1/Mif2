@@ -95,11 +95,11 @@ exports.mif2Internal = function (object)
   
   if (transform)
     pfp.paramMatrix = partrans(pomp,paramMatrix,dir="fromEstimationScale");
-  console.log(pfp)
+  
   
   return{
-    // "mif2d.pomp",
-    pfp,
+    ...pomp,
+    ...pfp,
     Nmif: Nmif,
     rw_sd: rw_sd,
     coolingType: coolingType,
@@ -226,7 +226,7 @@ mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, param_rwI
     }    
   } // end of nt loop   
     
-// console.log(loglik)
+
   if (nfail > 0) {
     console.log("warning! filtering failure occurred.");
   }

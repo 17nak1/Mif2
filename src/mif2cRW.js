@@ -1,5 +1,5 @@
 
-// let mathLib = require('./mathLib');
+
 /** randwalk_perturbation adds random normal value to the parameters.
  * 
  * @param {matrix} params  
@@ -14,7 +14,7 @@ exports.randwalk_perturbation = function (params, rw_sd, pidx) {
   for (let i = 0; i < nreps; i++) {
     for (let j = 0; j < pidx.length; j++) {
       if(pidx[j] !== null) {
-        params[i][j] += rw_sd[pidx[j]] * normalRand();//TODO
+        params[i][j] += rw_sd[pidx[j]] * mathLib.normalRand();//TODO
       }
     }
   }
@@ -32,3 +32,18 @@ const normalRand = function () {
 	u1 = BIG * u1 + Math.random();
 	return qnorm5(u1 / BIG, 0.0, 1.0, 1, 0);
 }
+// let s = []
+// for (let i = 0; i < 1000; i++) {
+//   s.push([mathLib.normalRand()])
+// }
+
+// let createCsvWriter = require('csv-writer').createArrayCsvWriter;
+//   let csvWriter = createCsvWriter({
+//     header: [],
+//     path: './rngM.csv',
+//     append : true
+//   })
+//   csvWriter.writeRecords( s)
+//   .then(() => {
+//   console.log('...loglik '+input.tempi)
+//   })
