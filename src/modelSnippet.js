@@ -22,8 +22,7 @@ let pIndex = {
   "S": 7,
   "E": 8,
   "I": 9,
-  "R":10,
-  "H": 11
+  "R":10
 };
 
 // Order of index in states
@@ -140,11 +139,9 @@ snippet.rmeasure = function (H, rho, psi) {
   }
   return cases
 }
-/**
- * paramnames is an array of all parameters in the model and all code is based on the order
- * of params in this array. The first index is zero i.e R0 = params[0]
- */
-snippet.paramnames = ["R0","amplitude","gamma","mu","sigma","rho","psi", "S_0", "E_0", "I_0", "R_0"];
+
+snippet.paramsMod = ["R0","amplitude","gamma","mu","sigma","rho","psi"];
+snippet.paramsIc = ["S_0", "E_0", "I_0", "R_0"];
 snippet.zeronames = ["H"];
 snippet.statenames = ["S","E","I","R","H"];
 

@@ -4,10 +4,9 @@ const { randwalk_perturbation } = require("./mif2cRW.js");
 const { rprocessInternal } = require("./rprocessInternal.js");
 const { dmeasureInternal } = require("./dmeasureInternal.js");
 const { pfilter_computations } = require("./pfilterComputations.js");
-const { cooling, partrans } = require("./mif2Helpers.js");
+const { cooling, partrans, coef } = require("./mif2Helpers.js");
 
-exports.mif2Internal = function (object)
-  {
+exports.mif2Internal = function (object) {
   let pomp = object.pomp;
   let Nmif = object.Nmif;
   let start = object.start;
@@ -31,7 +30,7 @@ exports.mif2Internal = function (object)
     
   Nmif = parseInt(Nmif);
   if (_paramMatrix === null) {
-    if (!start) start = pomp.coef;
+    if (!start) start = coef(pomp);
     if (Object.getPrototypeOf(start) == Object.prototype) start = Object.values(start);
   } else { 
     throw new Error("Not translated, if paramMatrix is supplied");  
@@ -61,15 +60,15 @@ exports.mif2Internal = function (object)
     paramMatrix = _paramMatrix;
   }
 
-  convRec = new Array(Nmif + 1).fill(Array(start.length + 2));
-  convRec[1] = [null, null, ...start];//[loglik,nfail,...start]
+  convRec = new Array(Nmif + 1).fill(null).map(a =>[null, null, ...Array(start.length)]);
+  convRec[0] = [null, null, ...start];//[loglik,nfail,...start]
   if (transform)
-    paramMatrix = partrans(pomp,paramMatrix,dir="toEstimationScale");
+    paramMatrix = partrans(pomp, paramMatrix, dir="toEstimationScale");
   
   // Iterate the filtering main loop 
   let pfp;
   for (let n = 0; n < Nmif; n++) {
-    // try {
+    try {
       pfp = mif2Pfilter(
         object=pomp,
         params=paramMatrix,
@@ -84,12 +83,17 @@ exports.mif2Internal = function (object)
         _indices=_indices,
       )
       
-    // } catch (error) {
-    //   throw new Error(`Iterate the filtering stoped: ${error}`)
-    // }
+    } catch (error) {
+      throw new Error(`Iterate the filtering stoped: ${error}`)
+    }
     paramMatrix = pfp.paramMatrix;
-    // convRec[n+1,-c(1,2)] = pfp.coef;
-    // convRec[n,c(1,2)] = [pfp.loglik, pfp.nfail];
+    convRec[n][0] = pfp.loglik;
+    convRec[n][1] = pfp.nfail;
+    
+    for (let i = 0; i < coef(pfp).length; i++) {
+      convRec[n + 1][2 + i] = coef(pfp)[i];
+    }
+    
     _indices = pfp.indices;
   }
   
@@ -109,7 +113,7 @@ exports.mif2Internal = function (object)
   }
 }
 
-mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, param_rwIndex,
+const mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, param_rwIndex,
   tol = 1e-17, maxFail = Inf, transform, _indices = 0)
 {
   if ((Array.isArray(tol) && tol.length !== 1) || tol === Infinity || tol < 0)
@@ -168,22 +172,24 @@ mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, param_rwI
         log = false
       ); 
     } catch (error) {
-      console.error(`In mif2.js: error in calculation of weights: ${error}`)
+      console.error(`In mif2.js: error in calculation of weights: ${error}`);
     }
     
-    let allFinite = weights.map(w => isFinite(w)).reduce((a, b) => a & b, 1)
+    let allFinite = weights.map(w => isFinite(w)).reduce((a, b) => a & b, 1);
     if (!allFinite) {
-      throw new Error("In dmeasure: weights returns non-finite value")
+      throw new Error("In dmeasure: weights returns non-finite value");
     }
 
     // compute weighted mean at last timestep
     if (nt === ntimes - 1) {
       if (weights.map(w => w>0).reduce((a, b) => a || b, 0)) {
-        object.coef = partrans(object, mathLib.mean(params, w = weights), dir="fromEstimationScale");
-        
+        // replace and fill object.params instead of coef(object). This is the same thing.
+        object.params = partrans(object, mathLib.mean(params, w = weights), dir="fromEstimationScale")[0];
+        object.params = coef(object, transform = transform);
       } else {
         console.warn("filtering failure at last filter iteration, using unweighted mean for 'coef' ");
-        object.coef = partrans(object, mathLib.mean(params), dir="fromEstimationScale");
+        object.params = partrans(object, mathLib.mean(params), dir="fromEstimationScale")[0];
+        object.params = coef(object, transform = transform);
       }
     }
 
@@ -232,6 +238,7 @@ mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, param_rwI
   }
 
   return {
+    ...object,
     paramMatrix: params,
     effSamplesize: effSampleSize,
     condLoglik: loglik,

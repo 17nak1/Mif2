@@ -26,9 +26,9 @@ const cooling = function(type, fraction, ntimes) {
 
 /**
  * Rescale the parameters.
- * @param {object} pomp 
- * @param {array} params 
- * @param {string} dir 
+ * .param {object} pomp 
+ * .param {array} params 
+ * .param {string} dir 
  */
 const partrans = function (pomp, params, dir = ["fromEstimationScale","toEstimationScale"]) {
   if (!Array.isArray(params[0])) params = new Array(params);
@@ -51,5 +51,28 @@ const partrans = function (pomp, params, dir = ["fromEstimationScale","toEstimat
   return transParam;
 }
 
+const coef = function (object, pars, transform = false) {
+  if (object.params.length > 0) {
+    if (transform) {
+      params = partrans(object, params = object.params, dir="toEstimationScale");
+    } else {
+      params = object.params;
+    }
+    // if (typeof pars === undefined)
+    //   pars = names(params)
+    // else {
+      // excl = setdiff(pars,names(params))
+      // if (excl.length >0) {
+      //   stop("in ",sQuote("coef"),": name(s) ",
+      //     paste(sQuote(excl),collapse=","),
+      //     " correspond to no parameter(s)",
+      //     call.=FALSE)
+      // }
+  
+  return params;
+  } else {
+    return 0;
+  }
+}
 
-module.exports = {cooling, partrans}
+module.exports = {cooling, partrans, coef}

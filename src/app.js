@@ -2,10 +2,11 @@
  * 
  *
  */
-let mif2 = require('./mif2.js');
-let snippet = require('./modelSnippet.js');
-let fs = require('fs');
-let mathLib = require('./mathLib.js');
+const mif2 = require('./mif2.js');
+const snippet = require('./modelSnippet.js');
+const fs = require('fs');
+const mathLib = require('./mathLib.js');
+const { coef } = require("./mif2Helpers.js");
 
 
 rootDir = '..'
@@ -16,31 +17,34 @@ let dataCovar = [];
 let dataCovarTimes = [];
 let currentParams = []; 
 
-// 1st data set; read all rows and delete last one if it is ['']
+// 1st data set;
 let temp, file;
-file = fs.readFileSync(rootDir+'/samples/London_covar.csv').toString()
+file = fs.readFileSync(rootDir+'/samples/London_covar.csv').toString();
 let lines = file.split('\n');
+let dataCovar_name = lines[0].split(',');
 for (let i = 1; i < lines.length; i++) {
   temp = lines[i].split(',');
   if(temp.length > 1) {
-    temp = temp.map(function (x) {return Number(x)});
+    temp = temp.map(x => Number(x));
     dataCovarTimes.push(temp[0]);
     dataCovar.push(temp.slice(1));
   }
 }
 
 //* 2nd data set
-file = fs.readFileSync(rootDir+'/samples/London_BiDataMainSh.csv').toString()
+file = fs.readFileSync(rootDir+'/samples/London_BiDataMainsh.csv').toString()
 lines = file.split('\n');
+let dataCases_name = lines[0].split(',');
 for (let i = 1; i < lines.length ; i++) {
   temp = lines[i].split(',');
   if(temp.length > 1) {
-    temp = temp.map(function (x) {return Number(x)});
+    temp = temp.map(x => Number(x));
     dataCasesTimes.push(temp[0]);
     dataCases.push(temp.slice(1));
   }
 }
-//* 3nd data set
+
+//* 3nd data set and names
 file = fs.readFileSync(rootDir+'/samples/initial_parameters.csv').toString()
 lines = file.split('\n');
 let currentParams_name = lines[0].split(',');
@@ -52,28 +56,35 @@ for (let i = 1; i < lines.length ; i++) {
   }
 }
 
-// need to sort curren_param based on currentParams and paramnames
+//remove "\r" from the last variable's name.
 let st = currentParams_name[currentParams_name.length - 1];
 currentParams_name[currentParams_name.length - 1] = st.substring(0, st.length - 1);
-let initialParams = new Array(currentParams.length).fill(Array(currentParams[0].length))
-for(let i = 0; i < snippet.paramnames.length; i++) {
+st = dataCovar_name[dataCovar_name.length - 1];
+dataCovar_name[dataCovar_name.length - 1] = st.substring(0, st.length - 1);
+st = dataCases_name[dataCases_name.length - 1];
+dataCases_name[dataCases_name.length - 1] = st.substring(0, st.length - 1);
+
+let sortedCurrentParams = new Array(currentParams.length).fill(Array(currentParams[0].length));
+// sortedCurrentParams is sorted currentParams based on snippet.paramnames.
+temp = [...snippet.paramsMod, ...snippet.paramsIc];
+for(let i = 0; i < temp.length; i++) {
   for( let j = 0; j < currentParams_name.length; j++) {
-    if(snippet.paramnames[i] === currentParams_name[j]) {
+    if(temp[i] === currentParams_name[j]) {
       for (let k = 0; k < currentParams.length; k++) {
-        initialParams[k][i] = currentParams[k][j];
+        sortedCurrentParams[k][i] = currentParams[k][j];
       }
     }
   }       
 }
 
-
-current_params = initialParams[0];
 let params_ic_fit = [];
 let params_mod_fit = ["R0", "amplitude", "mu", "rho", "psi"];
 let cool_fraction = 0.05;
 let paramnames_rw = ["R0","amplitude","mu","rho","psi", "S_0", "E_0", "I_0", "R_0"];
 
-let param_rwIndex = mathLib.index(snippet.paramnames,paramnames_rw);//index of params that are in rw;
+let current_params = sortedCurrentParams[0];;//only for this example:we need "for" loop
+
+let param_rwIndex = mathLib.index([...snippet.paramsMod, ...snippet.paramsIc], paramnames_rw);//index of params that are in rw;
 
 const rw_sd_f = function(time) {
   let rwSize = 0.05;
@@ -105,10 +116,11 @@ const pomp = {
   toEstimationScale: snippet.toEst,
   fromEstimationScale: snippet.fromEst,
   statenames: snippet.statenames,
-  paramnames: snippet.paramnames,
+  paramnames: [snippet.paramsMod, snippet.paramsIc],
   paramnamesRw: snippet.paramnames_rw,
-  coef: current_params,
+  // coef: current_params,
 }
+
 let d1 = [], d2 = [];
 for (let i = 0; i < pomp.covar.length; i++) {
   d1.push([Number(pomp.tcovar[i]), Number(pomp.covar[i][0])])
@@ -117,23 +129,26 @@ for (let i = 0; i < pomp.covar.length; i++) {
 
 pomp.population = mathLib.interpolator(d1);
 pomp.birthrate = mathLib.interpolator(d2);
+
 let t = new Date()
+pomp.params = current_params;//coef
+
 let mf = mif2.mif2Internal(
   {pomp: pomp,
-  Nmif: 1,
+  Nmif: 3,
   start: current_params,
   transform: true,
   ivps: params_ic_fit,
   pars: params_mod_fit,
   rw_sd: rw_sd_f,
   param_rwIndex: param_rwIndex,
-  Np: 50000,
+  Np: 2,
   varFactor: 2,
   coolingType: "hyperbolic",
   coolingFraction: cool_fraction
   }
 )
 
-console.log(new Date() - t, mf.loglik, mf.coef)
+console.log(new Date() - t, mf.loglik, coef(mf))
 
 

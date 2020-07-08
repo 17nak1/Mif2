@@ -2,8 +2,7 @@ const mathLib = require("./mathLib");
 const { Z_BINARY } = require("zlib");
 
 
-exports.euler_model_simulator  = function(func, xstart, times, params, deltat,
-   method, object)
+exports.euler_model_simulator  = function(func, xstart, times, params, deltat, method, object)
 {
   let zeronames = object.zeronames;
   let statenames = object.statenames; 
