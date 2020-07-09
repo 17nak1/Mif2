@@ -20,7 +20,7 @@ let currentParams = [];
 // 1st data set;
 let temp, file;
 file = fs.readFileSync(rootDir+'/samples/London_covar.csv').toString();
-let lines = file.split('\n');
+lines = file.split(/\r\n|\n/);
 let dataCovar_name = lines[0].split(',');
 for (let i = 1; i < lines.length; i++) {
   temp = lines[i].split(',');
@@ -33,7 +33,7 @@ for (let i = 1; i < lines.length; i++) {
 
 //* 2nd data set
 file = fs.readFileSync(rootDir+'/samples/London_BiDataMainsh.csv').toString()
-lines = file.split('\n');
+lines = file.split(/\r\n|\n/);
 let dataCases_name = lines[0].split(',');
 for (let i = 1; i < lines.length ; i++) {
   temp = lines[i].split(',');
@@ -46,7 +46,7 @@ for (let i = 1; i < lines.length ; i++) {
 
 //* 3nd data set and names
 file = fs.readFileSync(rootDir+'/samples/initial_parameters.csv').toString()
-lines = file.split('\n');
+lines = file.split(/\r\n|\n/);
 let currentParams_name = lines[0].split(',');
 for (let i = 1; i < lines.length ; i++) {
   temp = lines[i].split(',');
@@ -56,13 +56,6 @@ for (let i = 1; i < lines.length ; i++) {
   }
 }
 
-//remove "\r" from the last variable's name.
-let st = currentParams_name[currentParams_name.length - 1];
-currentParams_name[currentParams_name.length - 1] = st.substring(0, st.length - 1);
-st = dataCovar_name[dataCovar_name.length - 1];
-dataCovar_name[dataCovar_name.length - 1] = st.substring(0, st.length - 1);
-st = dataCases_name[dataCases_name.length - 1];
-dataCases_name[dataCases_name.length - 1] = st.substring(0, st.length - 1);
 
 let sortedCurrentParams = new Array(currentParams.length).fill(Array(currentParams[0].length));
 // sortedCurrentParams is sorted currentParams based on snippet.paramnames.
@@ -82,7 +75,7 @@ let params_mod_fit = ["R0", "amplitude", "mu", "rho", "psi"];
 let cool_fraction = 0.05;
 let paramnames_rw = ["R0","amplitude","mu","rho","psi", "S_0", "E_0", "I_0", "R_0"];
 
-let current_params = sortedCurrentParams[0];;//only for this example:we need "for" loop
+let current_params = sortedCurrentParams[0];//only for this example:we need "for" loop
 
 let param_rwIndex = mathLib.index([...snippet.paramsMod, ...snippet.paramsIc], paramnames_rw);//index of params that are in rw;
 
@@ -135,20 +128,26 @@ pomp.params = current_params;//coef
 
 let mf = mif2.mif2Internal(
   {pomp: pomp,
-  Nmif: 3,
+  Nmif: 5,
   start: current_params,
   transform: true,
   ivps: params_ic_fit,
   pars: params_mod_fit,
   rw_sd: rw_sd_f,
   param_rwIndex: param_rwIndex,
-  Np: 2,
+  Np: 10,
   varFactor: 2,
   coolingType: "hyperbolic",
   coolingFraction: cool_fraction
   }
 )
 
-console.log(new Date() - t, mf.loglik, coef(mf))
-
+console.log((new Date() - t)/1000, mf.loglik, coef(mf)[0])
+// let createCsvWriter = require('csv-writer').createArrayCsvWriter;
+//   let csvWriter = createCsvWriter({
+//     header: [],
+//     path: '../samples/convRec.csv',
+//     append : true
+//   })
+//   csvWriter.writeRecords( mf.convRec)
 
