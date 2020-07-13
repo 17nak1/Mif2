@@ -31,7 +31,7 @@ const cooling = function(type, fraction, ntimes) {
  * .param {string} dir 
  */
 const partrans = function (pomp, params, dir = ["fromEstimationScale","toEstimationScale"]) {
-  if (!Array.isArray(params[0])) params = new Array(params);
+  
   let transParam = [].concat(params);
   switch(dir){
   case "fromEstimationScale":
@@ -51,12 +51,12 @@ const partrans = function (pomp, params, dir = ["fromEstimationScale","toEstimat
   return transParam;
 }
 
-const coef = function (object, pars, transform = false) {
-  if (object.params.length > 0) {
+const coef = function (object, transform = false) {
+  if (Object.keys(object.params).length > 0) {
     if (transform) {
-      params = partrans(object, params = object.params, dir="toEstimationScale");
+      params = partrans(object, [object.params], dir="fromEstimationScale");
     } else {
-      params = object.params;
+      params = [object.params];
     }
     // if (typeof pars === undefined)
     //   pars = names(params)
@@ -69,7 +69,7 @@ const coef = function (object, pars, transform = false) {
       //     call.=FALSE)
       // }
   
-  return params;
+  return params[0];
   } else {
     return 0;
   }

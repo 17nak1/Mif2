@@ -5,8 +5,8 @@
 const mif2 = require('./mif2.js');
 const snippet = require('./modelSnippet.js');
 const fs = require('fs');
-const mathLib = require('./mathLib.js');
 const { coef } = require("./mif2Helpers.js");
+let pomp = require('./pomp.js');
 
 
 rootDir = '..'
@@ -17,11 +17,12 @@ let dataCovar = [];
 let dataCovarTimes = [];
 let currentParams = []; 
 
-// 1st data set;
+// 1st data set; read all rows and delete last one if it is ['']
 let temp, file;
 file = fs.readFileSync(rootDir+'/samples/London_covar.csv').toString();
-lines = file.split(/\r\n|\n/);
-let dataCovar_name = lines[0].split(',');
+let lines = file.split(/\r\n|\n/);
+let dataCovar_name = lines[0].replace(/['"]+/g, '').split(',');
+dataCovar_name.shift();
 for (let i = 1; i < lines.length; i++) {
   temp = lines[i].split(',');
   if(temp.length > 1) {
@@ -32,52 +33,47 @@ for (let i = 1; i < lines.length; i++) {
 }
 
 //* 2nd data set
-file = fs.readFileSync(rootDir+'/samples/London_BiDataMainsh.csv').toString()
+let data;
+file = fs.readFileSync(rootDir+'/samples/London_BiDataMain.csv').toString()
 lines = file.split(/\r\n|\n/);
-let dataCases_name = lines[0].split(',');
+let dataCases_name = lines[0].replace(/['"]+/g, '').split(',');
+dataCases_name.shift();
 for (let i = 1; i < lines.length ; i++) {
   temp = lines[i].split(',');
   if(temp.length > 1) {
     temp = temp.map(x => Number(x));
     dataCasesTimes.push(temp[0]);
-    dataCases.push(temp.slice(1));
+    data = {};
+    for(let j = 0; j < temp.length - 1; j++){
+      data[dataCases_name[j]] = temp[j + 1];
+    }
+    dataCases.push(data)
   }
 }
 
 //* 3nd data set and names
 file = fs.readFileSync(rootDir+'/samples/initial_parameters.csv').toString()
 lines = file.split(/\r\n|\n/);
-let currentParams_name = lines[0].split(',');
+let currentParams_name = lines[0].replace(/['"]+/g, '').split(',');
 for (let i = 1; i < lines.length ; i++) {
   temp = lines[i].split(',');
   if(temp.length > 1) {
-    temp = temp.map(function (x) {return Number(x)});
-    currentParams.push(temp);
+    temp = temp.map(x => Number(x));
+    data = {};
+    for(let j = 0; j < temp.length; j++){
+      data[currentParams_name[j]] = temp[j];
+    }
+    currentParams.push(data)
   }
 }
 
-
-let sortedCurrentParams = new Array(currentParams.length).fill(Array(currentParams[0].length));
-// sortedCurrentParams is sorted currentParams based on snippet.paramnames.
-temp = [...snippet.paramsMod, ...snippet.paramsIc];
-for(let i = 0; i < temp.length; i++) {
-  for( let j = 0; j < currentParams_name.length; j++) {
-    if(temp[i] === currentParams_name[j]) {
-      for (let k = 0; k < currentParams.length; k++) {
-        sortedCurrentParams[k][i] = currentParams[k][j];
-      }
-    }
-  }       
-}
-
+currentParams = currentParams[0]//Only for this example, we need loop over currentParams
 let params_ic_fit = [];
 let params_mod_fit = ["R0", "amplitude", "mu", "rho", "psi"];
 let cool_fraction = 0.05;
-let paramnames_rw = ["R0","amplitude","mu","rho","psi", "S_0", "E_0", "I_0", "R_0"];
+// let paramnames_rw = ["R0","amplitude","mu","rho","psi", "S_0", "E_0", "I_0", "R_0"];
 
-let current_params = sortedCurrentParams[0];//only for this example:we need "for" loop
-
-let param_rwIndex = mathLib.index([...snippet.paramsMod, ...snippet.paramsIc], paramnames_rw);//index of params that are in rw;
+// let param_rwIndex = mathLib.index([...snippet.paramsMod, ...snippet.paramsIc], paramnames_rw);//index of params that are in rw;
 
 const rw_sd_f = function(time) {
   let rwSize = 0.05;
@@ -90,12 +86,10 @@ const rw_sd_f = function(time) {
   let E_0 = time < 1944 ? 0 : rwSize;
   let I_0 = time < 1944 ? 0 : rwSize;
   let R_0 = time < 1944 ? 0 : rwSize;
-  return [R0, amplitude, mu, rho, psi, S_0, E_0, I_0, R_0];
+  return {R0: R0, amplitude: amplitude, mu: mu, rho: rho, psi: psi, S_0: S_0, E_0: E_0, I_0: I_0, R_0};
 }
-///////////////////////////////////////////////////
 
-/////////////////////////////////////
-const pomp = {
+const mypomp = new pomp({
   data :  dataCases,
   times:  dataCasesTimes,
   t0: 1940,
@@ -109,45 +103,78 @@ const pomp = {
   toEstimationScale: snippet.toEst,
   fromEstimationScale: snippet.fromEst,
   statenames: snippet.statenames,
-  paramnames: [snippet.paramsMod, snippet.paramsIc],
-  paramnamesRw: snippet.paramnames_rw,
-  // coef: current_params,
-}
+  paramnames: snippet.paramnames,
+  coef: currentParams,
+  covarnames: dataCovar_name,
+  obsnames: dataCases_name,
+});
 
-let d1 = [], d2 = [];
-for (let i = 0; i < pomp.covar.length; i++) {
-  d1.push([Number(pomp.tcovar[i]), Number(pomp.covar[i][0])])
-  d2.push([Number(pomp.tcovar[i]), Number(pomp.covar[i][1])])
-}
-
-pomp.population = mathLib.interpolator(d1);
-pomp.birthrate = mathLib.interpolator(d2);
+// const mypomp = new pomp({
+//   data :  dataCases,
+//   times:  dataCasesTimes,
+//   t0: 1940,
+//   rprocess :  { type:"euler_sim", stepFunction: snippet.rprocess, deltaT: 1/365.25 },
+//   rmeasure: snippet.rmeas,
+//   covar: dataCovar,
+//   tcovar: dataCovarTimes,
+//   dmeasure: snippet.dmeasure,
+//   zeronames: snippet.zeronames,
+//   initializer: snippet.initz,
+//   toEstimationScale: snippet.toEst,
+//   fromEstimationScale: snippet.fromEst,
+//   statenames: snippet.statenames,
+//   paramnames: snippet.paramnames,
+//   coef: currentParams,
+//   covarnames: dataCovar_name,
+//   obsnames: dataCases_name,
+// });
 
 let t = new Date()
-pomp.params = current_params;//coef
+mypomp.params = currentParams;//coef
 
 let mf = mif2.mif2Internal(
-  {pomp: pomp,
+  {object: mypomp,
   Nmif: 5,
-  start: current_params,
+  start: currentParams,
   transform: true,
   ivps: params_ic_fit,
   pars: params_mod_fit,
   rw_sd: rw_sd_f,
-  param_rwIndex: param_rwIndex,
-  Np: 10,
+  Np: 2000,
   varFactor: 2,
   coolingType: "hyperbolic",
   coolingFraction: cool_fraction
   }
 )
 
-console.log((new Date() - t)/1000, mf.loglik, coef(mf)[0])
-// let createCsvWriter = require('csv-writer').createArrayCsvWriter;
-//   let csvWriter = createCsvWriter({
-//     header: [],
-//     path: '../samples/convRec.csv',
-//     append : true
-//   })
-//   csvWriter.writeRecords( mf.convRec)
+console.log((new Date() - t)/1000, mf.loglik);
+
+const createCsvWriter = require('csv-writer').createObjectCsvWriter;
+// let header = [];
+// for (let i = 0; i < Object.keys(mf.convRec[0]).length; i++) {
+//   header.push({id: Object.keys(mf.convRec[0])[i]})
+// }
+
+const csvWriter = createCsvWriter({
+    path: './oo.csv',
+    header: [ { id: 'loglik' },
+    { id: 'nfail', title: 'nfail'},
+    { id: 'R0', title: 'R0'},
+    { id: 'amplitude', title: 'amplitude'},
+    { id: 'gamma', title: 'gamma'},
+    { id: 'mu', title: 'mu'},
+    { id: 'sigma', title: 'sigma'},
+    { id: 'rho', title: 'rho'},
+    { id: 'psi', title: 'psi'},
+    { id: 'S_0', title: 'S_0'},
+    { id: 'E_0', title: 'E_0'},
+    { id: 'I_0', title: 'I_0'},
+    { id: 'R_0', title: 'R_0'} ]
+});
+ 
+ 
+csvWriter.writeRecords(mf.convRec)       // returns a promise
+    .then(() => {
+        console.log('...Done');
+    });
 

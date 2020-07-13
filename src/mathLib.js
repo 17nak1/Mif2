@@ -286,16 +286,18 @@ mathLib.index = function(paramnames, a) {
 
 mathLib.mean = function(x , w = 0) {
   let nrow = x.length;
-  let ncol = x[0].length;
-  let mean = new Array(ncol).fill(0);
+  let ncol = Object.keys(x[0]).length;
+  let mean = {};
+  let temp = 0;
   if (w === 0)
     w = new Array(nrow).fill(1);
   let sumw = w.reduce((a,b) => a+b, 0);
   for (let i = 0; i < ncol; i ++) {
+    temp = 0;
     for (let j = 0; j < nrow; j++) {
-      mean[i] += x[j][i] * w[j];
+      temp += Object.values(x[j])[i] * w[j];
     }
-    mean[i] /= sumw; 
+    mean[Object.keys(x[0])[i]] = temp / sumw; 
   }  
   return mean;
 }

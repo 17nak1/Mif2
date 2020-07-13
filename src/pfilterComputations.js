@@ -16,9 +16,9 @@ const mathLib = require("./mathLib.js")
 exports.pfilter_computations = function (x, params, Np, rw_sd, predmean, predvar,
   filtmean, trackancestry, onepar, weights, toler, param_rwIndex)
 {
-  let nvars = x[0].length;
+  let nvars = Object.keys(x[0]).length;
   let nreps = x.length;
-  let npars = params[0].length;
+  let npars = Object.keys(params[0]).length;
   let nparreps = params.length;
 
   if (nreps % params.length != 0)
@@ -26,10 +26,10 @@ exports.pfilter_computations = function (x, params, Np, rw_sd, predmean, predvar
   let nrw = Array.isArray(rw_sd) ? rw_sd.length : 0;	     // number of parameters that are variable
   let do_rw = nrw > 0;                                     // do random walk in parameters?
   let rw_names = null;	                                   
-  if (do_rw) {
-    // names of parameters undergoing random walk
-    rw_names = rw_sd_name;
-  }
+  // if (do_rw) {
+  //   // names of parameters undergoing random walk
+  //   rw_names = rw_sd_name;
+  // }
   let do_par_resamp = !onepar || do_rw; // should we do parameter resampling?
 
   if (do_par_resamp) {
@@ -95,21 +95,22 @@ exports.pfilter_computations = function (x, params, Np, rw_sd, predmean, predvar
     }
   }
 
-  if (trackancestry) {
-    PROTECT(anc = NEW_INTEGER(np)); nprotect++;
-    xanc = INTEGER(anc);
-  }
+  // if (trackancestry) {
+  //   PROTECT(anc = NEW_INTEGER(np)); nprotect++;
+  //   xanc = INTEGER(anc);
+  // }
   let sum = 0;
+  let nvarName = Object.keys(x[0]);
   for (let j = 0; j < nvars; j++) {	// state variables
 
-    // compute prediction mean
+    //compute prediction mean
     if (predmean || predvar) {
       sum = 0;
       for (let k = 0; k < nreps; k++) {
-        sum += x[k][j];
+        sum += x[k][nvarName[j]];
       }
       sum /= nreps;
-      xpm[j] = sum;
+      xpm[nvarName[j]] = sum;
     }
 
     // compute prediction variance
@@ -117,10 +118,10 @@ exports.pfilter_computations = function (x, params, Np, rw_sd, predmean, predvar
       let sumsq = 0;
       let vsq;
       for (let k = 0; k < nreps; k++) {
-        vsq = x[k][j] - sum;
+        vsq = x[k][nvarName[j]] - sum;
         sumsq += vsq * vsq;
       }
-      xpv[j] = sumsq / (nreps - 1);
+      xpv[nvarName[j]] = sumsq / (nreps - 1);
     }
 
     //  compute filter mean
@@ -128,15 +129,15 @@ exports.pfilter_computations = function (x, params, Np, rw_sd, predmean, predvar
       if (all_fail) {		// unweighted average
         let ws = 0;
         for (let k = 0; k < nreps; k++) {
-          ws += x[k][j];
+          ws += x[k][nvarName[j]];
         }
-        xfm[j] = ws/ nreps;
+        xfm[nvarName[j]] = ws/ nreps;
       } else { 			// weighted average
         let ws = 0;
         for (let k = 0; k < nreps; k++) {
-          ws += x[k][j] * weights[k];
+          ws += x[k][nvarName[j]] * weights[k];
         }
-        xfm[j] = ws / w;
+        xfm[nvarName[j]] = ws / w;
       }
     }
   }
@@ -205,14 +206,10 @@ exports.pfilter_computations = function (x, params, Np, rw_sd, predmean, predvar
     mathLib.nosortResamp(nreps, weights, Np, sample, 0);
     
     for (let k = 0; k < Np; k++) { // copy the particles
-      for (let j = 0; j < nvars; j++) {
-        newstates[k][j] = x[sample[k]][j];
-      }
+        newstates[k] = Object.assign({}, x[sample[k]]);
       
       if (do_par_resamp) {
-        for (let j = 0; j < npars; j++){
-          newparams[k][j] = params[sample[k]][j];
-        } 
+          newparams[k] = Object.assign({}, params[sample[k]]);
       }
       if (trackancestry) xanc[k] = sample[k] + 1;
     }
@@ -232,6 +229,7 @@ exports.pfilter_computations = function (x, params, Np, rw_sd, predmean, predvar
   } else {
     retval.states = newstates;
   }
+  retval.params = params;
   
   if (all_fail || !do_par_resamp) {
     retval.params = params;

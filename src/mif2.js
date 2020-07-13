@@ -6,36 +6,36 @@ const { dmeasureInternal } = require("./dmeasureInternal.js");
 const { pfilter_computations } = require("./pfilterComputations.js");
 const { cooling, partrans, coef } = require("./mif2Helpers.js");
 
-exports.mif2Internal = function (object) {
-  let pomp = object.pomp;
-  let Nmif = object.Nmif;
-  let start = object.start;
-  let transform = object.transform? object.transform: FALSE;
-  let ivps =object.ivps;
-  let pars= object.pars;
-  let rw_sd = object.rw_sd;
-  let param_rwIndex = object.param_rwIndex;
-  let Np = object.Np;
-  let factorvar = object.factorvar;
-  let coolingType = object.coolingType ? object.coolingType: ["hyperbolic", "geometric"];
-  let coolingFraction = object.coolingFraction;
-  let tol = object.tol? object.tol: 1e-17;
-  let maxFail = object.maxFail? object.maxFail: Infinity;
-  let verbose = object.verbose? objectv: false;
-  let _paramMatrix = object._paramMatrix? object._paramMatrix: null;
-  let _ndone = object._ndone? object._ndone: 0;
-  let _indices = object._indices? object._indices: 0;
+exports.mif2Internal = function (arg) {
+  let pomp = arg.object;
+  let Nmif = arg.Nmif;
+  let start = arg.start;
+  let transform = arg.transform? arg.transform: FALSE;
+  let ivps =arg.ivps;
+  let pars= arg.pars;
+  let rw_sd = arg.rw_sd;
+  let Np = arg.Np;
+  let factorvar = arg.factorvar;
+  let coolingType = arg.coolingType ? arg.coolingType: ["hyperbolic", "geometric"];
+  let coolingFraction = arg.coolingFraction;
+  let tol = arg.tol? arg.tol: 1e-17;
+  let maxFail = arg.maxFail? arg.maxFail: Infinity;
+  let verbose = arg.verbose? argv: false;
+  let _paramMatrix = arg._paramMatrix? arg._paramMatrix: null;
+  let _ndone = arg._ndone? arg._ndone: 0;
+  let _indices = arg._indices? arg._indices: 0;
   if (Array.isArray(Nmif) || !isFinite(Nmif) || Nmif < 1)
     throw new Error("Nmif must be a positive integer.");
     
   Nmif = parseInt(Nmif);
   if (_paramMatrix === null) {
     if (!start) start = coef(pomp);
-    if (Object.getPrototypeOf(start) == Object.prototype) start = Object.values(start);
+    // if (Object.getPrototypeOf(start) == Object.prototype) start = Object.values(start);
   } else { 
     throw new Error("Not translated, if paramMatrix is supplied");  
   }
-  if (start.length ===0 || !start.every(element => {return typeof element === 'number'}))
+  
+  if (Object.keys(start).length === 0 || !Object.values(start).every(element => {return typeof element === 'number'}))
     throw new Error("parameters must be specified as a named numeric vector.")
 
   let ntimes = pomp.times.length;
@@ -44,7 +44,7 @@ exports.mif2Internal = function (object) {
   }
 
   if (!rw_sd) throw new Error("rw_sd function must be specified!");
-  //TODO: pkern.sd: it produce the matrix of params rw in ntime 
+  // pkern.sd: it produces the matrix of params rw in ntime 
   let rw_sd_matrix = [];
   for (let i = 0; i < ntimes; i++) {
     rw_sd_matrix.push(rw_sd(pomp.times[i]))
@@ -55,13 +55,13 @@ exports.mif2Internal = function (object) {
   let coolingFn = cooling(coolingType, coolingFraction, ntimes);
   let paramMatrix;
   if (_paramMatrix === null) {
-    paramMatrix = new Array(Np).fill(start);
+    paramMatrix = new Array(Np).fill(null).map(a => start);
   } else {
     paramMatrix = _paramMatrix;
   }
 
-  convRec = new Array(Nmif + 1).fill(null).map(a =>[null, null, ...Array(start.length)]);
-  convRec[0] = [null, null, ...start];//[loglik,nfail,...start]
+  convRec = new Array(Nmif + 1).fill(null).map(a => new Object());
+  convRec[0] = Object.assign({loglik: null, nfail: null}, start)
   if (transform)
     paramMatrix = partrans(pomp, paramMatrix, dir="toEstimationScale");
   
@@ -76,7 +76,6 @@ exports.mif2Internal = function (object) {
         mifiter=_ndone + n + 1,
         coolingFn,
         rw_sd= rw_sd_matrix,
-        param_rwIndex,
         tol=tol,
         maxFail,
         transform,
@@ -84,15 +83,15 @@ exports.mif2Internal = function (object) {
       )
       
     } catch (error) {
-      throw new Error(`Iterate the filtering stoped: ${error}`)
+      console.error(`Iterate the filtering stoped: ${error}`)
     }
     paramMatrix = pfp.paramMatrix;
-    convRec[n][0] = pfp.loglik;
-    convRec[n][1] = pfp.nfail;
-    
-    for (let i = 0; i < coef(pfp).length; i++) {
-      convRec[n + 1][2 + i] = coef(pfp)[i];
-    }
+    convRec[n].loglik = pfp.loglik;
+    convRec[n].nfail = pfp.nfail;
+
+    convRec[n + 1].loglik = null;
+    convRec[n + 1].nfail = null;
+    Object.assign(convRec[n + 1], coef(pfp));
     
     _indices = pfp.indices;
   }
@@ -102,7 +101,6 @@ exports.mif2Internal = function (object) {
   
   
   return{
-    ...pomp,
     ...pfp,
     Nmif: Nmif,
     rw_sd: rw_sd,
@@ -113,7 +111,7 @@ exports.mif2Internal = function (object) {
   }
 }
 
-const mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, param_rwIndex,
+const mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd,
   tol = 1e-17, maxFail = Inf, transform, _indices = 0)
 {
   if ((Array.isArray(tol) && tol.length !== 1) || tol === Infinity || tol < 0)
@@ -133,9 +131,9 @@ const mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, par
 
   for (let nt = 0; nt < ntimes; nt++) {//ntimes
     alpha = coolingFn(nt + 1,mifiter).alpha;
-    pmag =  rw_sd[nt].map(val => alpha * val);
-    
-    params = randwalk_perturbation(params, pmag, param_rwIndex);
+    pmg = Object.assign({}, rw_sd[nt]);
+    Object.keys(pmg).map(key => pmg[key] *= alpha);
+    params = randwalk_perturbation(params, pmg);
     
     if (transform)
       tparams = partrans(object, params, dir="fromEstimationScale");
@@ -144,7 +142,7 @@ const mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, par
       //get initial states
       let initparams = transform ? tparams : params;
       for (let i = 0; i < params.length; i++) {
-        x.push(object.initializer(object, initparams[i]))
+        x.push(object.initializer(initparams[i], object.interpolator(object.t0)));
       }
     } 
     
@@ -184,11 +182,11 @@ const mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, par
     if (nt === ntimes - 1) {
       if (weights.map(w => w>0).reduce((a, b) => a || b, 0)) {
         // replace and fill object.params instead of coef(object). This is the same thing.
-        object.params = partrans(object, mathLib.mean(params, w = weights), dir="fromEstimationScale")[0];
+        object.params = mathLib.mean(params, w = weights);
         object.params = coef(object, transform = transform);
       } else {
         console.warn("filtering failure at last filter iteration, using unweighted mean for 'coef' ");
-        object.params = partrans(object, mathLib.mean(params), dir="fromEstimationScale")[0];
+        object.params = mathLib.mean(params);
         object.params = coef(object, transform = transform);
       }
     }
@@ -208,8 +206,7 @@ const mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, par
         trackancestry = do_ta,
         onepar = false,
         weights = weights,
-        tol = tol,
-        param_rwIndex
+        tol = tol
       );
     } catch (error) {
       console.error(`particle-filter error: ${error}`) 
@@ -223,7 +220,7 @@ const mif2Pfilter = function (object, params, Np, mifiter, coolingFn, rw_sd, par
     }
 
     x = xx.states;
-    params = xx.params;
+    params = xx.params;// should be in toScale.
 
     if (allFail) { // all particles are lost
       nfail = nfail + 1;

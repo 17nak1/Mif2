@@ -19,7 +19,7 @@ const do_rprocess = function (object, xstart, times, params, offset, args) {
   let nreps = params.length;
 
   if (nrepsx > nreps) {		// more ICs than parameters
-    throw new Error("Less parameters than ICs is not translated!")
+    if (params.length === 1) params = new Array(nrepsx).fill(null).map(a => params[0]);
   } else if (nrepsx < nreps) {	// more parameters than ICs
     throw new Error("More parameters than ICs is not translated!")
   }
@@ -49,10 +49,3 @@ const do_rprocess = function (object, xstart, times, params, offset, args) {
       
   return X; 
 }  
-
-
-
-
-
-
-

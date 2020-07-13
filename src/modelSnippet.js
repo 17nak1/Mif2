@@ -10,53 +10,24 @@ snippet = {}
 let mathLib = require('./mathLib');
 let rpois = require('./rpois');
 
-// Order of index in parameters
-let pIndex = {
-  "R0": 0,
-  "amplitude": 1,
-  "gamma": 2,
-  "mu": 3,
-  "sigma": 4,
-  "rho": 5,
-  "psi": 6,
-  "S": 7,
-  "E": 8,
-  "I": 9,
-  "R":10
-};
-
-// Order of index in states
-let sIndex = {
-  "S_0": 0,
-  "E_0": 1,
-  "I_0": 2,
-  "R_0":3,
-  "H": 4
-}
-
-let dataIndex = {
-  "cases": 0
-}
-
-
-snippet.rprocess = function (pomp, states, params, t, deltaT) {
+snippet.rprocess = function (states, params, t, dt, covar) {
   
-  let S = states[sIndex['S_0']];
-  let E = states[sIndex['E_0']];
-  let I = states[sIndex['I_0']];
-  let R = states[sIndex['R_0']];
-  let H = states[sIndex['H']];
+  let S = states.S;
+  let E = states.E;
+  let I = states.I;
+  let R = states.R;
+  let H = states.H;
 
-  let R0 = params[pIndex['R0']];
-  let amplitude = params[pIndex['amplitude']];
-  let gamma = params[pIndex['gamma']];
-  let mu = params[pIndex['mu']];
-  let sigma = params[pIndex['sigma']] ;
+  let R0 = params.R0;
+  let amplitude = params.amplitude;
+  let gamma = params.gamma;
+  let mu = params.mu;
+  let sigma = params.sigma ;
 
-  let pop = pomp.population(t);
-  let birthrate = pomp.birthrate(t);
+  let pop = covar.pop;
+  let birthrate = covar.birthrate;
   let seas, beta, beta0, foi, tt, va;
-  let length = pomp.statenames.length - pomp.zeronames.length - 1;
+  let length = 3;
   let trans = new Array(length * 2).fill(0);
   let rate = new Array(length * 2); 
 
@@ -79,35 +50,36 @@ snippet.rprocess = function (pomp, states, params, t, deltaT) {
   rate[4] = gamma          // recovery
   rate[5] = mu             // natural I death 
    
-  let births = rpois.rpoisOne(birthrate * (1 - va) * deltaT )// Poisson births
-  mathLib.reulermultinom(2, Math.round(S), 0, deltaT, 0, rate, trans)
-  mathLib.reulermultinom(2, Math.round(E), 2, deltaT, 2, rate, trans)
-  mathLib.reulermultinom(2, Math.round(I), 4, deltaT, 4, rate, trans)
+  let births = rpois.rpoisOne(birthrate * (1 - va) * dt )// Poisson births
+  mathLib.reulermultinom(2, Math.round(S), 0, dt, 0, rate, trans)
+  mathLib.reulermultinom(2, Math.round(E), 2, dt, 2, rate, trans)
+  mathLib.reulermultinom(2, Math.round(I), 4, dt, 4, rate, trans)
   S += (births - trans[0] - trans[1])
   E += (trans[0] - trans[2] - trans[3]) 
   I += (trans[2] - trans[4] - trans[5]) 
   R = pop - S - E - I
   H += trans[4] 
-  return [S, E, I, R, H]
+  return {S, E, I, R, H}
 }
 
-snippet.initz = function(pomp, params) {
-  let m = pomp.population(pomp.t0) / (params[pIndex["S"]] + params[pIndex["E"]] + params[pIndex["R"]] + params[pIndex["I"]]);
-  let S_0 = Math.round(m * params[pIndex["S"]]);
-  let E_0 = Math.round(m * params[pIndex["E"]]);
-  let I_0 = Math.round(m * params[pIndex["I"]]);
-  let R_0 = Math.round(m * params[pIndex["R"]]);
-  let H_0 = 0;
-  return [S_0, E_0, I_0, R_0, H_0];
+snippet.initz = function(args, covar) {
+  
+  let m = covar.pop / (args.S_0 + args.E_0 + args.R_0 + args.I_0);
+  let S = Math.round(m * args.S_0);
+  let E = Math.round(m * args.E_0);
+  let I = Math.round(m * args.I_0);
+  let R = Math.round(m * args.R_0);
+  let H = 0;
+  return {S: S, E: E, I: I, R: R, H: H};
 }
 
-snippet.dmeasure = function (pomp, data , hidden_state, params, giveLog = 1) {
+snippet.dmeasure = function (data ,hiddenState, params, giveLog = 1) {
   
   let lik
-  let rho = params[pIndex['rho']];
-  let psi = params[pIndex['psi']];
-  let H = hidden_state[sIndex['H']];
-  let cases = data[dataIndex['cases']]
+  let rho = params.rho;
+  let psi = params.psi;
+  let H = hiddenState.H;
+  let cases = data.cases;
 
   let tol = 1.0e-18
   let mn = rho * H;
@@ -146,29 +118,31 @@ snippet.zeronames = ["H"];
 snippet.statenames = ["S","E","I","R","H"];
 
 snippet.toEst = function(params) {
-  let mu = Math.log(params[3]);
-  let psi = Math.log(params[6]);
-  let sigma = Math.log(params[4]);
-  let gamma = Math.log(params[2]);
-  let R0 = Math.log(params[0]);
-  let rho = mathLib.logit(params[5]);
-  let amplitude = mathLib.logit(params[1]);
-  let states = mathLib.toLogBarycentric([params[7], params[8], params[9], params[10]]);
+  let mu = Math.log(params.mu);
+  let psi = Math.log(params.psi);
+  let sigma = Math.log(params.sigma);
+  let gamma = Math.log(params.gamma);
+  let R0 = Math.log(params.R0);
+  let rho = mathLib.logit(params.rho);
+  let amplitude = mathLib.logit(params.amplitude);
+  let states = mathLib.toLogBarycentric([params.S_0, params.E_0, params.I_0, params.R_0]);
   //Parameters order should be the same as paramnames.
-  return [R0, amplitude, gamma, mu, sigma, rho, psi, ...states];
+  return {R0: R0, amplitude: amplitude, gamma: gamma, mu: mu, sigma: sigma,
+     rho: rho, psi: psi, S_0: states[0], E_0: states[1], I_0: states[2], R_0: states[3]};
 }
 
 snippet.fromEst = function(params) {
-  let mu = Math.exp(params[3]);
-  let psi = Math.exp(params[6]);
-  let sigma = Math.exp(params[4]);
-  let gamma = Math.exp(params[2]);
-  let R0 = Math.exp(params[0]);
-  let rho = mathLib.expit(params[5]);
-  let amplitude = mathLib.expit(params[1]);
-  let states = mathLib.fromLogBarycentric([params[7], params[8], params[9], params[10]]);
+  let mu = Math.exp(params.mu);
+  let psi = Math.exp(params.psi);
+  let sigma = Math.exp(params.sigma);
+  let gamma = Math.exp(params.gamma);
+  let R0 = Math.exp(params.R0);
+  let rho = mathLib.expit(params.rho);
+  let amplitude = mathLib.expit(params.amplitude);
+  let states = mathLib.fromLogBarycentric([params.S_0, params.E_0, params.I_0, params.R_0]);
   //Parameters order should be the same as paramnames.
-  return [R0, amplitude, gamma, mu, sigma, rho, psi, ...states];
+  return {R0: R0, amplitude: amplitude, gamma: gamma, mu: mu, sigma: sigma,
+    rho: rho, psi: psi, S_0: states[0], E_0: states[1], I_0: states[2], R_0: states[3]};
 }
 
 module.exports = snippet
